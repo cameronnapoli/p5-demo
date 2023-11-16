@@ -1,10 +1,15 @@
 'use client';
-import BackgroundP5 from '@/components/BackgroundP5'
+
+import dynamic from 'next/dynamic';
+
+const DynamicBackground = dynamic(() => import('@/components/BackgroundP5'), {
+  ssr: false,
+});
 
 export default function Home() {
   return (
     <main className="w-screen h-screen">
-      <BackgroundP5 />
+      <DynamicBackground />
     </main>
   )
 }
