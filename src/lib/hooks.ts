@@ -154,3 +154,21 @@ export const useIsVisible = (
   useObserveIntersection(ref, setIsVisible, options);
   return isVisible;
 };
+
+/**
+ * returns true if the mouse has not moved in the last `timeout` ms
+ */
+export const useMouseStagnant = (timout = 500) => {
+  const [isStagnant, setIsStagnant] = useState(false);
+  const lastMove = useRef(Date.now());
+  useMousePosition(50, () => {
+    lastMove.current = Date.now();
+  });
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsStagnant(Date.now() - lastMove.current > timout);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [timout]);
+  return isStagnant;
+};

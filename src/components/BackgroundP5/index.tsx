@@ -5,25 +5,27 @@ import React, { useEffect, useRef } from 'react';
 
 import styles from './styles.module.scss';
 
-import { useIsVisible } from '@/lib/hooks';
+import { useIsVisible, useMouseStagnant } from '@/lib/hooks';
 import { clamp } from '@/lib/utils';
 
 const settings = {
-  fps: 30,
+  fps: 60,
   dotColor: '#bab6ab',
   dotSize: 4,
   maxGravForce: 12,
   maxEllasticForce: 20,
   columns: 80,
-  columnGap: 8,
+  columnGap: 10,
   rows: 40,
-  rowGap: 8,
+  rowGap: 10,
 };
 
 let pauseFn: () => void = () => undefined;
 let resumeFn: () => void = () => undefined;
 
 const sketch = (p: p5) => {
+  p.disableFriendlyErrors = true;
+
   /**
    * force = G*m1*m2 / (distance * distance)
    */
@@ -65,7 +67,7 @@ const sketch = (p: p5) => {
       forceMagnitude = Math.abs(distance);
     } else {
       // exponential
-      forceMagnitude = (Math.pow(2, (0.5 * distance) - 2)) + 2;
+      forceMagnitude = (Math.pow(1.7, (0.5 * distance) - 2)) + 2;
     }
 
     // calculate force direction (unit vector)
@@ -153,9 +155,7 @@ const sketch = (p: p5) => {
     }
 
     show() {
-      p.noStroke();
-      p.fill(settings.dotColor);
-      p.circle(this.position.x, this.position.y, settings.dotSize);
+      p.ellipse(this.position.x, this.position.y, settings.dotSize, settings.dotSize, 8);
     }
   }
 
@@ -172,8 +172,10 @@ const sketch = (p: p5) => {
         let y = j * (settings.dotSize + settings.rowGap);
 
         // normalize to center
-        x = x + (p.windowWidth / 2) - (gridWidth / 2);
-        y = y + (p.windowHeight / 2) - (gridHeight / 2);
+        // x = x + (p.windowWidth / 2) - (gridWidth / 2);
+        // y = y + (p.windowHeight / 2) - (gridHeight / 2);
+        x = x - (gridWidth / 2);
+        y = y - (gridHeight / 2);
 
         entities.push(
           new Entity(
@@ -188,7 +190,7 @@ const sketch = (p: p5) => {
 
   p.setup = () => {
     p.frameRate(settings.fps);
-    const canvas = p.createCanvas(p.windowWidth, p.windowHeight);
+    const canvas = p.createCanvas(p.windowWidth, p.windowHeight, p.WEBGL);
     createEntities();
     canvas.parent('p5-container');
 
@@ -205,7 +207,8 @@ const sketch = (p: p5) => {
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i];
 
-      const mousePosition = p.mouseX !== 0 && p.mouseY !== 0 ? p.createVector(p.mouseX, p.mouseY) : null;
+      const mousePosition = (p.mouseX !== 0 && p.mouseY !== 0) ?
+        p.createVector(p.mouseX - (p.windowWidth / 2), p.mouseY - (p.windowHeight / 2)) : null;
 
       if (mousePosition) {
         const mouseForce = calculateGravity(
@@ -232,6 +235,8 @@ const sketch = (p: p5) => {
 
       entity.applyVelocity();
 
+      p.noStroke();
+      p.fill(settings.dotColor);
       entity.show();
     }
   };
@@ -245,6 +250,8 @@ const sketch = (p: p5) => {
 const BackgroundP5: React.FunctionComponent = () => {
   const rootRef = useRef<HTMLDivElement>(null);
   const isVisible = useIsVisible(rootRef, { threshold: 0.1 });
+  const isStagnant = useMouseStagnant(1000);
+  const isPaused = !isVisible || isStagnant;
 
   const created = useRef(false);
   useEffect(() => {
@@ -254,12 +261,12 @@ const BackgroundP5: React.FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    if (isVisible) {
-      resumeFn();
-    } else {
+    if (isPaused) {
       pauseFn();
+    } else {
+      resumeFn();
     }
-  }, [isVisible]);
+  }, [isPaused]);
 
   return (
     <div className={styles.root} ref={rootRef}>
